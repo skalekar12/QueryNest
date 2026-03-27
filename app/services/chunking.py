@@ -1,40 +1,37 @@
 import uuid
 
-def split_text_into_chunks(text: str, chunk_size: int = 700, overlap: int = 150):
-    """
-    Split text into overlapping word-based chunks.
+import re
 
-    Args:
-        text (str): Cleaned input text
-        chunk_size (int): Number of words per chunk
-        overlap (int): Number of overlapping words
 
-    Returns:
-        List[str]: List of text chunks
+def split_text_into_chunks(text: str, chunk_size: int = 500, overlap: int = 100):
     """
+    Smarter chunking using sentence boundaries + overlap
+    """
+
     if not text:
         return []
 
-    words = text.replace("\n", " ").split()
+    # 🧠 Split into sentences
+    sentences = re.split(r'(?<=[.!?]) +', text.replace("\n", " "))
+
     chunks = []
+    current_chunk = ""
 
-    start = 0
-    total_words = len(words)
+    for sentence in sentences:
+        # If adding sentence stays within limit
+        if len(current_chunk) + len(sentence) < chunk_size:
+            current_chunk += " " + sentence
+        else:
+            chunks.append(current_chunk.strip())
 
-    while start < total_words:
-        end = start + chunk_size
-        chunk_words = words[start:end]
+            # 🔥 overlap: keep last part
+            overlap_text = current_chunk[-overlap:]
+            current_chunk = overlap_text + " " + sentence
 
-        chunk_text = " ".join(chunk_words).strip()
-
-        if chunk_text:
-            chunks.append(chunk_text)
-
-        # Move start forward with overlap
-        start += (chunk_size - overlap)
+    if current_chunk:
+        chunks.append(current_chunk.strip())
 
     return chunks
-
 
 def create_chunks_with_metadata(text: str, source: str = "unknown"):
     """

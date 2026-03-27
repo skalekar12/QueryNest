@@ -4,14 +4,7 @@ import re
 
 def load_pdf(file_path: str):
     """
-    Load a PDF and extract texts page by page.
-
-    Returns:
-        dict:
-            {
-                "full_text": str,
-                "pages": [{"page": int, "text": str}]
-            }
+    Load PDF and extract text using block-based layout (FIXED).
     """
     doc = fitz.open(file_path)
 
@@ -19,21 +12,33 @@ def load_pdf(file_path: str):
     full_text_parts = []
 
     for page_number, page in enumerate(doc, start=1):
-        text = page.get_text()
 
-        # Skip empty or whitespace-only pages
-        if not text or not text.strip():
+        blocks = page.get_text("blocks")  # 🔥 KEY CHANGE
+
+        # Sort blocks top-to-bottom, left-to-right
+        blocks = sorted(blocks, key=lambda b: (b[1], b[0]))
+
+        page_text_parts = []
+
+        for block in blocks:
+            text = block[4].strip()
+
+            if not text:
+                continue
+
+            page_text_parts.append(text)
+
+        page_text = " ".join(page_text_parts)
+
+        if not page_text.strip():
             continue
-
-        text = text.strip()
 
         pages_data.append({
             "page": page_number,
-            "text": text
+            "text": page_text
         })
 
-        # Add spacing between pages
-        full_text_parts.append(text)
+        full_text_parts.append(page_text)
 
     doc.close()
 
@@ -45,47 +50,79 @@ def load_pdf(file_path: str):
     }
 
 
+# 🔥 MAIN CLEANING FUNCTION (UPGRADED)
 def clean_text(text: str) -> str:
     """
-    Clean extracted text for embedding.
+    Clean text for high-quality RAG.
 
-    - Normalize spaces
-    - Remove excessive newlines
-    - Keep punctuation (important for RAG)
+    Fixes:
+    - broken words
+    - hyphen splits
+    - extra spaces
+    - noisy formatting
     """
+
     if not text:
         return ""
 
-    # Replace multiple newlines with max two
-    text = re.sub(r"\n{3,}", "\n\n", text)
+    # 🔹 Fix hyphenated words across lines (multi-\nhead → multihead)
+    text = re.sub(r'(\w)-\n(\w)', r'\1\2', text)
 
-    # Replace multiple spaces/tabs with single space
-    text = re.sub(r"[ \t]+", " ", text)
+    # 🔹 Replace newlines with space (important BEFORE word fixes)
+    text = text.replace("\n", " ")
 
-    # Fix spacing around newlines
-    text = re.sub(r" *\n *", "\n", text)
+    # 🔹 Fix broken words like "mul ti" → "multi"
+    text = re.sub(r'(\w)\s+(\w)', r'\1 \2', text)
 
-    # Strip leading/trailing whitespace
+    # 🔹 Remove multiple spaces
+    text = re.sub(r'\s+', ' ', text)
+
+    # 🔹 Remove references like [1], [23]
+    text = re.sub(r'\[\d+\]', '', text)
+
+    # 🔹 Remove figure/table mentions
+    text = re.sub(r'(Figure|Table)\s*\d+.*?(?=\.)', '', text)
+
+    # 🔹 Remove weird math artifacts (optional but useful)
+    text = re.sub(r'√\w+', '', text)
+
+    # 🔹 Strip
     text = text.strip()
 
     return text
 
 
+# 🔥 EXTRA NOISE REMOVAL (OPTIONAL BUT STRONG)
+def remove_noise(text: str) -> str:
+    """
+    Removes academic PDF noise.
+    """
+
+    # Remove citation-heavy lines
+    text = re.sub(r'\b(et al\.?)', '', text)
+
+    # Remove excessive numbers (like tables)
+    text = re.sub(r'\b\d+\.\d+\b', '', text)
+
+    return text.strip()
+
+
 def extract_text_from_pdf(file_path: str):
     """
-    Wrapper function for PDF ingestion.
-
-    This is the ONLY function your API should call.
+    Main ingestion function for RAG.
     """
+
     data = load_pdf(file_path)
 
+    # 🔥 Clean full text
     cleaned_full_text = clean_text(data["full_text"])
+    cleaned_full_text = remove_noise(cleaned_full_text)
 
-    # Clean each page individually (important for future citations)
+    # 🔥 Clean pages individually (important for citations later)
     cleaned_pages = [
         {
             "page": page["page"],
-            "text": clean_text(page["text"])
+            "text": remove_noise(clean_text(page["text"]))
         }
         for page in data["pages"]
     ]
