@@ -4,7 +4,7 @@ import re
 
 def load_pdf(file_path: str):
     """
-    Load a PDF and extract text page by page.
+    Load a PDF and extract texts page by page.
 
     Returns:
         dict:
