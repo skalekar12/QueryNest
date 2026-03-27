@@ -1,6 +1,5 @@
 import uuid
 
-
 def split_text_into_chunks(text: str, chunk_size: int = 700, overlap: int = 150):
     """
     Split text into overlapping word-based chunks.
