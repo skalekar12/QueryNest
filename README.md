@@ -52,7 +52,7 @@ QueryNest/
 ### 1️⃣ Clone the Repository
 
 ```
-git clone https://github.com/your-username/query-nest.git
+git clone https://github.com/your-username/query-nest
 cd query-nest
 ```
 
