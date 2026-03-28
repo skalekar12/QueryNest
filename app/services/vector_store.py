@@ -31,6 +31,7 @@ def save_faiss_index(index, path: str):
     """
     Save FAISS index to disk.
     """
+    print(f"DEBUG save_faiss_index path: {path}, type: {type(path)}")
     os.makedirs(os.path.dirname(path), exist_ok=True)
     faiss.write_index(index, path)
 

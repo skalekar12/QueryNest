@@ -65,9 +65,6 @@ def clean_text(text: str) -> str:
     if not text:
         return ""
 
-    # 🔹 Fix hyphenated words across lines (multi-\nhead → multihead)
-    text = re.sub(r'(\w)-\n(\w)', r'\1\2', text)
-
     # 🔹 Replace newlines with space (important BEFORE word fixes)
     text = text.replace("\n", " ")
 
